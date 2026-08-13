@@ -1,24 +1,22 @@
-require("dotenv").config();
-
 const express = require("express");
-const connectDB = require("./config");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+
+dotenv.config();
+connectDB();
 
 const app = express();
 
 app.use(express.json());
 
-connectDB();
+// Import routes
+const documentRoutes = require("./routes/documentRoutes");
 
-app.get("/", (req, res) => {
-  res.send("SyncDoc API Running");
-});
+// Use routes
+app.use("/api/documents", documentRoutes);
 
 const PORT = process.env.PORT || 5000;
 
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
-
-module.exports = app;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
