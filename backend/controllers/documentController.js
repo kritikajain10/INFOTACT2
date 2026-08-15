@@ -3,7 +3,13 @@ const Document = require("../models/Document");
 // Create a new document
 const createDocument = async (req, res) => {
   try {
-    const document = await Document.create(req.body);
+    const { title } = req.body;
+
+    const document = await Document.create({
+      title,
+      blocks: [],
+    });
+
     res.status(201).json(document);
   } catch (error) {
     res.status(500).json({ message: error.message });

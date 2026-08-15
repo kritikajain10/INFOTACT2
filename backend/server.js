@@ -9,10 +9,8 @@ const app = express();
 
 app.use(express.json());
 
-// Import routes
 const documentRoutes = require("./routes/documentRoutes");
 
-// Use routes
 app.use("/api/documents", documentRoutes);
 
 const PORT = process.env.PORT || 5000;
