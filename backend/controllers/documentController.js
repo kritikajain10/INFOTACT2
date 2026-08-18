@@ -25,8 +25,22 @@ const getDocuments = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const getDocumentById = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    res.status(200).json(document);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   createDocument,
   getDocuments,
+  getDocumentById,
 };
