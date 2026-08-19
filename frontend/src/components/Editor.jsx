@@ -1,45 +1,136 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 
 function Editor() {
-  const textareaRef = useRef();
+  const textareaRef = useRef(null);
+  const [status, setStatus] = useState("Connecting...");
 
   useEffect(() => {
-    const ydoc = new Y.Doc();
+    const doc = new Y.Doc();
 
     const provider = new WebsocketProvider(
       "ws://localhost:1234",
       "syncdoc-room",
-      ydoc
+      doc
     );
 
-    const ytext = ydoc.getText("document");
-
-    textareaRef.current.value = ytext.toString();
-
-    ytext.observe(() => {
-      textareaRef.current.value = ytext.toString();
+    provider.on("status", (event) => {
+      setStatus(event.status);
     });
 
-    textareaRef.current.addEventListener("input", () => {
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, textareaRef.current.value);
-    });
+    const yText = doc.getText("content");
+
+    // Initial content
+    if (textareaRef.current) {
+      textareaRef.current.value = yText.toString();
+    }
+
+    // Update textarea only if text actually changed
+    const updateText = () => {
+      if (!textareaRef.current) return;
+
+      const newValue = yText.toString();
+
+      if (textareaRef.current.value !== newValue) {
+        const cursor = textareaRef.current.selectionStart;
+
+        textareaRef.current.value = newValue;
+
+        textareaRef.current.setSelectionRange(cursor, cursor);
+      }
+    };
+
+    yText.observe(updateText);
+
+    const handleInput = () => {
+      if (!textareaRef.current) return;
+
+      const value = textareaRef.current.value;
+
+      doc.transact(() => {
+        yText.delete(0, yText.length);
+        yText.insert(0, value);
+      });
+    };
+
+    const textarea = textareaRef.current;
+
+    if (textarea) {
+      textarea.addEventListener("input", handleInput);
+    }
 
     return () => {
+      if (textarea) {
+        textarea.removeEventListener("input", handleInput);
+      }
+
+      yText.unobserve(updateText);
       provider.destroy();
-      ydoc.destroy();
+      doc.destroy();
     };
   }, []);
 
+  const saveDocument = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/documents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: textareaRef.current.value,
+        }),
+      });
+  
+      const data = await response.json();
+      alert("Document saved successfully!");
+      console.log(data);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save document.");
+    }
+  };
   return (
-    <textarea
-      ref={textareaRef}
-      rows="20"
-      cols="80"
-      placeholder="Start typing..."
-    />
+    <div
+      style={{
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      
+
+      <p>
+        <strong>Status:</strong> {status}
+      </p>
+
+      <textarea
+        ref={textareaRef}
+        rows={20}
+        cols={80}
+        placeholder="Start typing..."
+         style={{
+          padding: "10px",
+          fontSize: "16px",
+          width: "700px",
+          height: "350px",
+          resize: "none",
+        }}
+        />
+          <button
+      onClick={saveDocument}
+      style={{
+        marginTop: "15px",
+        padding: "10px 20px",
+        cursor: "pointer",
+      }}
+      >
+      Save Document
+    </button>
+       
+    </div>
   );
 }
 
