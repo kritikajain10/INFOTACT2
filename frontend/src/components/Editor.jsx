@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
@@ -5,6 +6,7 @@ import { WebsocketProvider } from "y-websocket";
 function Editor() {
   const textareaRef = useRef(null);
   const [status, setStatus] = useState("Connecting...");
+    const [onlineUsers, setOnlineUsers] = useState(1);
 
   useEffect(() => {
     const doc = new Y.Doc();
@@ -15,6 +17,14 @@ function Editor() {
       doc
     );
 
+    const awareness = provider.awareness;
+
+    awareness.setLocalStateField("user", {
+      name: "User " + Math.floor(Math.random() * 1000),
+    });
+    awareness.on("change", () => {
+      setOnlineUsers(awareness.getStates().size);
+    });
     provider.on("status", (event) => {
       setStatus(event.status);
     });
@@ -105,6 +115,7 @@ function Editor() {
       <p>
         <strong>Status:</strong> {status}
       </p>
+      <p>🟢 Users Online: {onlineUsers}</p>
 
       <textarea
         ref={textareaRef}
