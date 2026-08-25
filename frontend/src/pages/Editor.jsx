@@ -1,3 +1,4 @@
+import { jsPDF } from "jspdf";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
@@ -118,6 +119,19 @@ function Editor() {
       alert("Failed to save document.");
     }
   };
+  const exportPDF = () => {
+    const doc = new jsPDF();
+  
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+  
+    const content = textareaRef.current.value || "";
+  
+    const lines = doc.splitTextToSize(content, 180);
+    doc.text(lines, 15, 20);
+  
+    doc.save("SyncDoc.pdf");
+  };
 
   return (
     <div
@@ -172,8 +186,24 @@ function Editor() {
           cursor: "pointer",
         }}
       >
+        
         Save Document
       </button>
+      <button
+  onClick={exportPDF}
+  style={{
+    marginTop: "15px",
+    marginLeft: "10px",
+    padding: "10px 20px",
+    cursor: "pointer",
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+  }}
+>
+  Export PDF
+</button>
     </div>
   );
 }
