@@ -1,13 +1,19 @@
-import Editor from "./components/Editor";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Editor from "./pages/Editor";
 
 function App() {
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>SyncDoc</h1>
-      <p>Collaborative Document Engine</p>
-
-      <Editor />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/editor" element={<Editor />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

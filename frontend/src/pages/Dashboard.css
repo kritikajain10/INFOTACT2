@@ -1,0 +1,160 @@
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+}
+
+.dashboard{
+    min-height:100vh;
+    background:#f5f7fb;
+}
+
+.navbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:20px 40px;
+    background:#4f46e5;
+    color:white;
+}
+
+.nav-right{
+    display:flex;
+    gap:15px;
+    align-items:center;
+}
+
+.nav-right input{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+}
+
+.logout-btn{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#ef4444;
+    color:white;
+    cursor:pointer;
+}
+
+.content{
+    padding:40px;
+}
+.content h1{
+    color:#111419;
+    font-size:42px;
+    margin-bottom:10px;
+}
+
+.content p{
+    color:#ef4444;
+    font-size:20px;
+    margin-bottom:30px;
+}
+
+.document-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-top:30px;
+}
+
+.card{
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    text-align:center;
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(0,0,0,.1);
+    transition:0.3s;
+}
+
+.card:hover{
+    transform:translateY(-5px);
+}
+
+.new-btn{
+    margin-top:30px;
+    padding:15px 25px;
+    border:none;
+    border-radius:10px;
+    background:#22c55e;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+.dashboard{
+    display:flex;
+    min-height:100vh;
+}
+
+.sidebar{
+    width:240px;
+    background:#4338ca;
+    color:white;
+    padding:25px;
+    display:flex;
+    flex-direction:column;
+}
+
+.sidebar h2{
+    margin-bottom:40px;
+}
+
+.sidebar ul{
+    list-style:none;
+    padding:0;
+}
+
+.sidebar li{
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.sidebar li:hover{
+    background:rgba(255,255,255,.2);
+}
+
+.main{
+    flex:1;
+    padding:35px;
+}
+
+.navbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:35px;
+}
+
+.navbar input{
+    width:320px;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #ddd;
+}
+
+.avatar{
+    width:45px;
+    height:45px;
+    border-radius:50%;
+    background:#4f46e5;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:bold;
+}
+
+.card p{
+    color:gray;
+    margin-top:12px;
+}
+
+.new-btn{
+    margin-top:35px;
+}
