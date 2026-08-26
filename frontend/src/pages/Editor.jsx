@@ -132,7 +132,33 @@ function Editor() {
   
     doc.save("SyncDoc.pdf");
   };
-
+  const exportHTML = () => {
+    if (!textareaRef.current) return;
+  
+    const content = textareaRef.current.value;
+  
+    const htmlContent = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>SyncDoc Export</title>
+  </head>
+  <body>
+    <pre>${content}</pre>
+  </body>
+  </html>`;
+  
+    const blob = new Blob([htmlContent], { type: "text/html" });
+  
+    const url = URL.createObjectURL(blob);
+  
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "SyncDoc.html";
+    link.click();
+  
+    URL.revokeObjectURL(url);
+  };
   return (
     <div
       style={{
@@ -204,6 +230,19 @@ function Editor() {
 >
   Export PDF
 </button>
+<button
+    onClick={exportHTML}
+    style={{
+      padding: "10px 20px",
+      cursor: "pointer",
+      background: "#f59e0b",
+      color: "white",
+      border: "none",
+      borderRadius: "5px",
+    }}
+  >
+    🌐 Export HTML
+  </button>
     </div>
   );
 }
