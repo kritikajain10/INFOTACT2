@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
@@ -5,7 +6,7 @@ import { WebsocketProvider } from "y-websocket";
 
 function Editor() {
   const textareaRef = useRef(null);
-
+  const [cursorPosition, setCursorPosition] = useState(0);
   const [status, setStatus] = useState("Connecting...");
   const [onlineUsers, setOnlineUsers] = useState(1);
   const [wordCount, setWordCount] = useState(0);
@@ -73,6 +74,8 @@ function Editor() {
       if (!textareaRef.current) return;
 
       const value = textareaRef.current.value;
+      setCursorPosition(textareaRef.current.selectionStart);
+
 
       doc.transact(() => {
         yText.delete(0, yText.length);
@@ -81,14 +84,22 @@ function Editor() {
     };
 
     const textarea = textareaRef.current;
-
+    const handleCursorMove = () => {
+      if (!textareaRef.current) return;
+    
+      setCursorPosition(textareaRef.current.selectionStart);
+    };
     if (textarea) {
       textarea.addEventListener("input", handleInput);
+      textarea.addEventListener("click", handleCursorMove);
+      textarea.addEventListener("keyup", handleCursorMove);
     }
 
     return () => {
       if (textarea) {
         textarea.removeEventListener("input", handleInput);
+textarea.removeEventListener("click", handleCursorMove);
+textarea.removeEventListener("keyup", handleCursorMove);
       }
 
       yText.unobserve(updateText);
@@ -187,6 +198,8 @@ function Editor() {
         <span>📝 Words: {wordCount}</span>
         <span>🔤 Characters: {charCount}</span>
         <span>📄 Lines: {lineCount}</span>
+        <span>📄 Cursor: {cursorPosition}</span>
+
         <span>💾 Last Saved: {lastSaved || "Not Saved"}</span>
       </div>
 
