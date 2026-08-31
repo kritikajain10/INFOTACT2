@@ -1,33 +1,33 @@
-
-import { jsPDF } from "jspdf";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import { jsPDF } from "jspdf";
 
 function Editor() {
   const textareaRef = useRef(null);
-  const [cursorPosition, setCursorPosition] = useState(0);
+
   const [status, setStatus] = useState("Connecting...");
   const [onlineUsers, setOnlineUsers] = useState(1);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [lineCount, setLineCount] = useState(1);
+  const [cursorPosition, setCursorPosition] = useState(0);
   const [lastSaved, setLastSaved] = useState("");
 
   useEffect(() => {
-    const doc = new Y.Doc();
+    const ydoc = new Y.Doc();
 
     const provider = new WebsocketProvider(
       "ws://localhost:1234",
       "syncdoc-room",
-      doc
+      ydoc
     );
 
-    // ✅ Missing line
     const awareness = provider.awareness;
 
     awareness.setLocalStateField("user", {
       name: "User " + Math.floor(Math.random() * 1000),
+      cursor: 0,
     });
 
     awareness.on("change", () => {
@@ -38,7 +38,7 @@ function Editor() {
       setStatus(event.status);
     });
 
-    const yText = doc.getText("content");
+    const yText = ydoc.getText("content");
 
     if (textareaRef.current) {
       textareaRef.current.value = yText.toString();
@@ -64,9 +64,13 @@ function Editor() {
 
       setWordCount(words);
 
-      const lines = newValue === "" ? 1 : newValue.split("\n").length;
+      const lines =
+        newValue === "" ? 1 : newValue.split("\n").length;
+
       setLineCount(lines);
     };
+
+    updateText();
 
     yText.observe(updateText);
 
@@ -74,21 +78,28 @@ function Editor() {
       if (!textareaRef.current) return;
 
       const value = textareaRef.current.value;
-      setCursorPosition(textareaRef.current.selectionStart);
 
-
-      doc.transact(() => {
+      ydoc.transact(() => {
         yText.delete(0, yText.length);
         yText.insert(0, value);
       });
     };
 
-    const textarea = textareaRef.current;
     const handleCursorMove = () => {
       if (!textareaRef.current) return;
-    
-      setCursorPosition(textareaRef.current.selectionStart);
+
+      const cursor = textareaRef.current.selectionStart;
+
+      setCursorPosition(cursor);
+
+      awareness.setLocalStateField("user", {
+        ...awareness.getLocalState().user,
+        cursor,
+      });
     };
+
+    const textarea = textareaRef.current;
+
     if (textarea) {
       textarea.addEventListener("input", handleInput);
       textarea.addEventListener("click", handleCursorMove);
@@ -98,13 +109,13 @@ function Editor() {
     return () => {
       if (textarea) {
         textarea.removeEventListener("input", handleInput);
-textarea.removeEventListener("click", handleCursorMove);
-textarea.removeEventListener("keyup", handleCursorMove);
+        textarea.removeEventListener("click", handleCursorMove);
+        textarea.removeEventListener("keyup", handleCursorMove);
       }
 
       yText.unobserve(updateText);
       provider.destroy();
-      doc.destroy();
+      ydoc.destroy();
     };
   }, []);
 
@@ -130,46 +141,49 @@ textarea.removeEventListener("keyup", handleCursorMove);
       alert("Failed to save document.");
     }
   };
+
   const exportPDF = () => {
     const doc = new jsPDF();
-  
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-  
+
     const content = textareaRef.current.value || "";
-  
+
     const lines = doc.splitTextToSize(content, 180);
+
     doc.text(lines, 15, 20);
-  
+
     doc.save("SyncDoc.pdf");
   };
+
   const exportHTML = () => {
     if (!textareaRef.current) return;
-  
+
     const content = textareaRef.current.value;
-  
+
     const htmlContent = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <title>SyncDoc Export</title>
-  </head>
-  <body>
-    <pre>${content}</pre>
-  </body>
-  </html>`;
-  
-    const blob = new Blob([htmlContent], { type: "text/html" });
-  
+<!DOCTYPE html>
+<html>
+<head>
+<title>SyncDoc Export</title>
+</head>
+<body>
+<pre>${content}</pre>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], {
+      type: "text/html",
+    });
+
     const url = URL.createObjectURL(blob);
-  
+
     const link = document.createElement("a");
     link.href = url;
     link.download = "SyncDoc.html";
     link.click();
-  
+
     URL.revokeObjectURL(url);
   };
+
   return (
     <div
       style={{
@@ -189,8 +203,8 @@ textarea.removeEventListener("keyup", handleCursorMove);
         style={{
           display: "flex",
           gap: "20px",
-          marginBottom: "15px",
           flexWrap: "wrap",
+          marginBottom: "20px",
           fontWeight: "bold",
         }}
       >
@@ -198,8 +212,7 @@ textarea.removeEventListener("keyup", handleCursorMove);
         <span>📝 Words: {wordCount}</span>
         <span>🔤 Characters: {charCount}</span>
         <span>📄 Lines: {lineCount}</span>
-        <span>📄 Cursor: {cursorPosition}</span>
-
+        <span>📍 Cursor: {cursorPosition}</span>
         <span>💾 Last Saved: {lastSaved || "Not Saved"}</span>
       </div>
 
@@ -209,53 +222,59 @@ textarea.removeEventListener("keyup", handleCursorMove);
         cols={80}
         placeholder="Start typing..."
         style={{
-          padding: "10px",
-          fontSize: "16px",
           width: "700px",
           height: "350px",
           resize: "none",
+          fontSize: "16px",
+          padding: "10px",
         }}
       />
 
-      <button
-        onClick={saveDocument}
+      <div
         style={{
-          marginTop: "15px",
-          padding: "10px 20px",
-          cursor: "pointer",
+          marginTop: "20px",
+          display: "flex",
+          gap: "10px",
         }}
       >
-        
-        Save Document
-      </button>
-      <button
-  onClick={exportPDF}
-  style={{
-    marginTop: "15px",
-    marginLeft: "10px",
-    padding: "10px 20px",
-    cursor: "pointer",
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-  }}
->
-  Export PDF
-</button>
-<button
-    onClick={exportHTML}
-    style={{
-      padding: "10px 20px",
-      cursor: "pointer",
-      background: "#f59e0b",
-      color: "white",
-      border: "none",
-      borderRadius: "5px",
-    }}
-  >
-    🌐 Export HTML
-  </button>
+        <button
+          onClick={saveDocument}
+          style={{
+            padding: "10px 20px",
+            cursor: "pointer",
+          }}
+        >
+          Save Document
+        </button>
+
+        <button
+          onClick={exportPDF}
+          style={{
+            padding: "10px 20px",
+            cursor: "pointer",
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+          }}
+        >
+          Export PDF
+        </button>
+
+        <button
+          onClick={exportHTML}
+          style={{
+            padding: "10px 20px",
+            cursor: "pointer",
+            background: "#f59e0b",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+          }}
+        >
+          🌐 Export HTML
+        </button>
+      </div>
     </div>
   );
 }
