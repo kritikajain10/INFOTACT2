@@ -118,7 +118,6 @@ function Editor() {
       ydoc.destroy();
     };
   }, []);
-
   const saveDocument = async () => {
     try {
       const response = await fetch("http://localhost:5000/api/documents", {
@@ -145,7 +144,7 @@ function Editor() {
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    const content = textareaRef.current.value || "";
+    const content = textareaRef.current?.value || "";
 
     const lines = doc.splitTextToSize(content, 180);
 
@@ -177,6 +176,7 @@ function Editor() {
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
+
     link.href = url;
     link.download = "SyncDoc.html";
     link.click();
@@ -184,6 +184,39 @@ function Editor() {
     URL.revokeObjectURL(url);
   };
 
+  // ===== Formatting Toolbar =====
+
+  const wrapSelection = (before, after = before) => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    const text = textarea.value;
+
+    const selected = text.substring(start, end);
+
+    const newText =
+      text.substring(0, start) +
+      before +
+      selected +
+      after +
+      text.substring(end);
+
+    textarea.value = newText;
+
+    textarea.dispatchEvent(new Event("input"));
+  };
+
+  const clearEditor = () => {
+    if (!textareaRef.current) return;
+
+    textareaRef.current.value = "";
+
+    textareaRef.current.dispatchEvent(new Event("input"));
+  };
   return (
     <div
       style={{
@@ -216,6 +249,73 @@ function Editor() {
         <span>💾 Last Saved: {lastSaved || "Not Saved"}</span>
       </div>
 
+      {/* Formatting Toolbar */}
+
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          marginBottom: "15px",
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          onClick={() => wrapSelection("**")}
+          style={{
+            padding: "8px 18px",
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          <b>B</b>
+        </button>
+
+        <button
+          onClick={() => wrapSelection("*")}
+          style={{
+            padding: "8px 18px",
+            background: "#16a34a",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          <i>I</i>
+        </button>
+
+        <button
+          onClick={() => wrapSelection("__")}
+          style={{
+            padding: "8px 18px",
+            background: "#9333ea",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          <u>U</u>
+        </button>
+
+        <button
+          onClick={clearEditor}
+          style={{
+            padding: "8px 18px",
+            background: "#dc2626",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          Clear
+        </button>
+      </div>
+
       <textarea
         ref={textareaRef}
         rows={20}
@@ -227,14 +327,16 @@ function Editor() {
           resize: "none",
           fontSize: "16px",
           padding: "10px",
+          borderRadius: "8px",
+          border: "1px solid #ccc",
         }}
       />
-
       <div
         style={{
           marginTop: "20px",
           display: "flex",
           gap: "10px",
+          flexWrap: "wrap",
         }}
       >
         <button
@@ -242,9 +344,13 @@ function Editor() {
           style={{
             padding: "10px 20px",
             cursor: "pointer",
+            background: "#22c55e",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
           }}
         >
-          Save Document
+          💾 Save Document
         </button>
 
         <button
@@ -258,7 +364,7 @@ function Editor() {
             borderRadius: "5px",
           }}
         >
-          Export PDF
+          📄 Export PDF
         </button>
 
         <button
