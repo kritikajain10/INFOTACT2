@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { jsPDF } from "jspdf";
+import DOMPurify from "dompurify";
 
 function Editor() {
   const textareaRef = useRef(null);
@@ -13,6 +14,7 @@ function Editor() {
   const [lineCount, setLineCount] = useState(1);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [lastSaved, setLastSaved] = useState("");
+  const [previewHTML, setPreviewHTML] = useState("");
 
   useEffect(() => {
     const ydoc = new Y.Doc();
@@ -176,7 +178,6 @@ function Editor() {
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
-
     link.href = url;
     link.download = "SyncDoc.html";
     link.click();
@@ -216,6 +217,18 @@ function Editor() {
     textareaRef.current.value = "";
 
     textareaRef.current.dispatchEvent(new Event("input"));
+  };
+
+  // ===== Secure HTML Preview =====
+
+  const previewDocument = () => {
+    if (!textareaRef.current) return;
+
+    const cleanHTML = DOMPurify.sanitize(
+      textareaRef.current.value.replace(/\n/g, "<br>")
+    );
+
+    setPreviewHTML(cleanHTML);
   };
   return (
     <div
@@ -331,6 +344,7 @@ function Editor() {
           border: "1px solid #ccc",
         }}
       />
+
       <div
         style={{
           marginTop: "20px",
@@ -339,7 +353,7 @@ function Editor() {
           flexWrap: "wrap",
         }}
       >
-        <button
+              <button
           onClick={saveDocument}
           style={{
             padding: "10px 20px",
@@ -380,7 +394,42 @@ function Editor() {
         >
           🌐 Export HTML
         </button>
+
+        <button
+          onClick={previewDocument}
+          style={{
+            padding: "10px 20px",
+            cursor: "pointer",
+            background: "#7c3aed",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+          }}
+        >
+          👁 Preview
+        </button>
       </div>
+
+      {previewHTML && (
+        <div
+          style={{
+            width: "700px",
+            marginTop: "20px",
+            padding: "15px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            background: "#f9f9f9",
+          }}
+        >
+          <h3>Document Preview</h3>
+
+          <div
+            dangerouslySetInnerHTML={{
+              __html: previewHTML,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
