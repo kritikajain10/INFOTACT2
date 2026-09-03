@@ -185,8 +185,6 @@ function Editor() {
     URL.revokeObjectURL(url);
   };
 
-  // ===== Formatting Toolbar =====
-
   const wrapSelection = (before, after = before) => {
     if (!textareaRef.current) return;
 
@@ -219,8 +217,6 @@ function Editor() {
     textareaRef.current.dispatchEvent(new Event("input"));
   };
 
-  // ===== Secure HTML Preview =====
-
   const previewDocument = () => {
     if (!textareaRef.current) return;
 
@@ -230,16 +226,27 @@ function Editor() {
 
     setPreviewHTML(cleanHTML);
   };
+
   return (
     <div
       style={{
-        padding: "20px",
+        minHeight: "100vh",
+        padding: "30px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        background: "#f4f7fb",
       }}
     >
-      <h2>SyncDoc</h2>
+      <h2
+        style={{
+          color: "#2563eb",
+          fontSize: "36px",
+          marginBottom: "10px",
+        }}
+      >
+        SyncDoc
+      </h2>
 
       <p>
         <strong>Status:</strong> {status}
@@ -252,6 +259,13 @@ function Editor() {
           flexWrap: "wrap",
           marginBottom: "20px",
           fontWeight: "bold",
+          background: "white",
+          padding: "15px",
+          borderRadius: "10px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          justifyContent: "center",
+          width: "90%",
+          maxWidth: "900px",
         }}
       >
         <span>👥 Users: {onlineUsers}</span>
@@ -270,6 +284,7 @@ function Editor() {
           gap: "10px",
           marginBottom: "15px",
           flexWrap: "wrap",
+          justifyContent: "center",
         }}
       >
         <button
@@ -281,6 +296,7 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
+            transition: "0.3s",
           }}
         >
           <b>B</b>
@@ -295,6 +311,7 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
+            transition: "0.3s",
           }}
         >
           <i>I</i>
@@ -309,6 +326,7 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
+            transition: "0.3s",
           }}
         >
           <u>U</u>
@@ -323,6 +341,7 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
+            transition: "0.3s",
           }}
         >
           Clear
@@ -335,13 +354,15 @@ function Editor() {
         cols={80}
         placeholder="Start typing..."
         style={{
-          width: "700px",
-          height: "350px",
-          resize: "none",
+          width: "90%",
+          maxWidth: "900px",
+          minHeight: "350px",
+          resize: "vertical",
           fontSize: "16px",
-          padding: "10px",
-          borderRadius: "8px",
+          padding: "15px",
+          borderRadius: "10px",
           border: "1px solid #ccc",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         }}
       />
 
@@ -349,11 +370,12 @@ function Editor() {
         style={{
           marginTop: "20px",
           display: "flex",
-          gap: "10px",
+          gap: "12px",
           flexWrap: "wrap",
+          justifyContent: "center",
         }}
       >
-              <button
+      <button
           onClick={saveDocument}
           style={{
             padding: "10px 20px",
@@ -362,6 +384,7 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
+            transition: "0.3s",
           }}
         >
           💾 Save Document
@@ -376,6 +399,7 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
+            transition: "0.3s",
           }}
         >
           📄 Export PDF
@@ -390,6 +414,7 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
+            transition: "0.3s",
           }}
         >
           🌐 Export HTML
@@ -404,6 +429,7 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
+            transition: "0.3s",
           }}
         >
           👁 Preview
@@ -413,12 +439,13 @@ function Editor() {
       {previewHTML && (
         <div
           style={{
-            width: "700px",
+            width: "90%",
+            maxWidth: "900px",
             marginTop: "20px",
-            padding: "15px",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            background: "#f9f9f9",
+            padding: "20px",
+            borderRadius: "10px",
+            background: "white",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
           <h3>Document Preview</h3>
