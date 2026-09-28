@@ -5,7 +5,8 @@ import { jsPDF } from "jspdf";
 import DOMPurify from "dompurify";
 
 function Editor() {
-  const textareaRef = useRef(null);
+  const editorRef = useRef(null);
+  const isRemoteUpdate = useRef(false);
 
   const [status, setStatus] = useState("Connecting...");
   const [onlineUsers, setOnlineUsers] = useState(1);
@@ -15,6 +16,43 @@ function Editor() {
   const [cursorPosition, setCursorPosition] = useState(0);
   const [lastSaved, setLastSaved] = useState("");
   const [previewHTML, setPreviewHTML] = useState("");
+
+  const updateStats = () => {
+    if (!editorRef.current) return;
+
+    const text = editorRef.current.innerText || "";
+
+    setCharCount(text.length);
+
+    const words = text.trim()
+      ? text.trim().split(/\s+/).length
+      : 0;
+
+    setWordCount(words);
+
+    const lines =
+      text === "" ? 1 : text.split("\n").length;
+
+    setLineCount(lines);
+
+    const selection = window.getSelection();
+
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+
+      if (editorRef.current.contains(range.startContainer)) {
+        const preCaretRange = range.cloneRange();
+
+        preCaretRange.selectNodeContents(editorRef.current);
+        preCaretRange.setEnd(
+          range.startContainer,
+          range.startOffset
+        );
+
+        setCursorPosition(preCaretRange.toString().length);
+      }
+    }
+  };
 
   useEffect(() => {
     const ydoc = new Y.Doc();
@@ -42,57 +80,65 @@ function Editor() {
 
     const yText = ydoc.getText("content");
 
-    if (textareaRef.current) {
-      textareaRef.current.value = yText.toString();
-    }
+    const updateEditor = () => {
+      if (!editorRef.current) return;
 
-    const updateText = () => {
-      if (!textareaRef.current) return;
+      const newHTML = yText.toString();
 
-      const newValue = yText.toString();
+      if (editorRef.current.innerHTML !== newHTML) {
+        isRemoteUpdate.current = true;
 
-      if (textareaRef.current.value !== newValue) {
-        const cursor = textareaRef.current.selectionStart;
+        editorRef.current.innerHTML = newHTML;
 
-        textareaRef.current.value = newValue;
-        textareaRef.current.setSelectionRange(cursor, cursor);
+        isRemoteUpdate.current = false;
       }
 
-      setCharCount(newValue.length);
-
-      const words = newValue.trim()
-        ? newValue.trim().split(/\s+/).length
-        : 0;
-
-      setWordCount(words);
-
-      const lines =
-        newValue === "" ? 1 : newValue.split("\n").length;
-
-      setLineCount(lines);
+      updateStats();
     };
 
-    updateText();
+    updateEditor();
 
-    yText.observe(updateText);
+    yText.observe(updateEditor);
 
     const handleInput = () => {
-      if (!textareaRef.current) return;
+      if (!editorRef.current) return;
 
-      const value = textareaRef.current.value;
+      if (isRemoteUpdate.current) return;
+
+      const html = editorRef.current.innerHTML;
 
       ydoc.transact(() => {
         yText.delete(0, yText.length);
-        yText.insert(0, value);
+        yText.insert(0, html);
       });
+
+      updateStats();
     };
 
     const handleCursorMove = () => {
-      if (!textareaRef.current) return;
+      updateStats();
 
-      const cursor = textareaRef.current.selectionStart;
+      const selection = window.getSelection();
 
-      setCursorPosition(cursor);
+      if (!selection || selection.rangeCount === 0) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+
+      if (!editorRef.current.contains(range.startContainer)) {
+        return;
+      }
+
+      const preCaretRange = range.cloneRange();
+
+      preCaretRange.selectNodeContents(editorRef.current);
+      preCaretRange.setEnd(
+        range.startContainer,
+        range.startOffset
+      );
+
+      const cursor = preCaretRange.toString().length;
 
       awareness.setLocalStateField("user", {
         ...awareness.getLocalState().user,
@@ -100,41 +146,85 @@ function Editor() {
       });
     };
 
-    const textarea = textareaRef.current;
+    const editor = editorRef.current;
 
-    if (textarea) {
-      textarea.addEventListener("input", handleInput);
-      textarea.addEventListener("click", handleCursorMove);
-      textarea.addEventListener("keyup", handleCursorMove);
+    if (editor) {
+      editor.addEventListener("input", handleInput);
+      editor.addEventListener("click", handleCursorMove);
+      editor.addEventListener("keyup", handleCursorMove);
+      editor.addEventListener("mouseup", handleCursorMove);
     }
 
     return () => {
-      if (textarea) {
-        textarea.removeEventListener("input", handleInput);
-        textarea.removeEventListener("click", handleCursorMove);
-        textarea.removeEventListener("keyup", handleCursorMove);
+      if (editor) {
+        editor.removeEventListener("input", handleInput);
+        editor.removeEventListener("click", handleCursorMove);
+        editor.removeEventListener("keyup", handleCursorMove);
+        editor.removeEventListener("mouseup", handleCursorMove);
       }
 
-      yText.unobserve(updateText);
+      yText.unobserve(updateEditor);
       provider.destroy();
       ydoc.destroy();
     };
   }, []);
+
+  // =========================
+  // FORMATTING
+  // =========================
+
+  const formatText = (command) => {
+    if (!editorRef.current) return;
+
+    editorRef.current.focus();
+
+    document.execCommand(command, false, null);
+
+    editorRef.current.dispatchEvent(
+      new Event("input", { bubbles: true })
+    );
+
+    updateStats();
+  };
+
+  const clearEditor = () => {
+    if (!editorRef.current) return;
+
+    editorRef.current.innerHTML = "";
+
+    editorRef.current.dispatchEvent(
+      new Event("input", { bubbles: true })
+    );
+
+    updateStats();
+  };
+
+  // =========================
+  // SAVE
+  // =========================
+
   const saveDocument = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/documents", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: textareaRef.current.value,
-        }),
-      });
+      const content = editorRef.current?.innerHTML || "";
+
+      const response = await fetch(
+        "http://localhost:5000/api/documents",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content,
+          }),
+        }
+      );
 
       await response.json();
 
-      setLastSaved(new Date().toLocaleTimeString());
+      setLastSaved(
+        new Date().toLocaleTimeString()
+      );
 
       alert("Document saved successfully!");
     } catch (error) {
@@ -143,86 +233,100 @@ function Editor() {
     }
   };
 
+  // =========================
+  // PDF
+  // =========================
+
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    const content = textareaRef.current?.value || "";
+    const content =
+      editorRef.current?.innerText || "";
 
-    const lines = doc.splitTextToSize(content, 180);
+    const lines = doc.splitTextToSize(
+      content,
+      180
+    );
 
     doc.text(lines, 15, 20);
 
     doc.save("SyncDoc.pdf");
   };
 
-  const exportHTML = () => {
-    if (!textareaRef.current) return;
+  // =========================
+  // HTML EXPORT
+  // =========================
 
-    const content = textareaRef.current.value;
+  const exportHTML = () => {
+    if (!editorRef.current) return;
+
+    const content = editorRef.current.innerHTML;
+
+    const cleanHTML =
+      DOMPurify.sanitize(content);
 
     const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <title>SyncDoc Export</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 40px;
+  line-height: 1.6;
+}
+
+.document {
+  max-width: 900px;
+  margin: auto;
+}
+</style>
+
 </head>
+
 <body>
-<pre>${content}</pre>
+
+<div class="document">
+${cleanHTML}
+</div>
+
 </body>
-</html>`;
+</html>
+`;
 
-    const blob = new Blob([htmlContent], {
-      type: "text/html",
-    });
+    const blob = new Blob(
+      [htmlContent],
+      { type: "text/html" }
+    );
 
-    const url = URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link =
+      document.createElement("a");
+
     link.href = url;
     link.download = "SyncDoc.html";
+
     link.click();
 
     URL.revokeObjectURL(url);
   };
 
-  const wrapSelection = (before, after = before) => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-
-    const text = textarea.value;
-
-    const selected = text.substring(start, end);
-
-    const newText =
-      text.substring(0, start) +
-      before +
-      selected +
-      after +
-      text.substring(end);
-
-    textarea.value = newText;
-
-    textarea.dispatchEvent(new Event("input"));
-  };
-
-  const clearEditor = () => {
-    if (!textareaRef.current) return;
-
-    textareaRef.current.value = "";
-
-    textareaRef.current.dispatchEvent(new Event("input"));
-  };
+  // =========================
+  // PREVIEW
+  // =========================
 
   const previewDocument = () => {
-    if (!textareaRef.current) return;
+    if (!editorRef.current) return;
 
-    const cleanHTML = DOMPurify.sanitize(
-      textareaRef.current.value.replace(/\n/g, "<br>")
-    );
+    const cleanHTML =
+      DOMPurify.sanitize(
+        editorRef.current.innerHTML
+      );
 
     setPreviewHTML(cleanHTML);
   };
@@ -249,8 +353,13 @@ function Editor() {
       </h2>
 
       <p>
-        <strong>Status:</strong> {status}
+        <strong>Status:</strong>{" "}
+        {status}
       </p>
+
+      {/* =========================
+          STATISTICS
+      ========================= */}
 
       <div
         style={{
@@ -262,21 +371,42 @@ function Editor() {
           background: "white",
           padding: "15px",
           borderRadius: "10px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          boxShadow:
+            "0 2px 8px rgba(0,0,0,0.1)",
           justifyContent: "center",
           width: "90%",
           maxWidth: "900px",
         }}
       >
-        <span>👥 Users: {onlineUsers}</span>
-        <span>📝 Words: {wordCount}</span>
-        <span>🔤 Characters: {charCount}</span>
-        <span>📄 Lines: {lineCount}</span>
-        <span>📍 Cursor: {cursorPosition}</span>
-        <span>💾 Last Saved: {lastSaved || "Not Saved"}</span>
+        <span>
+          👥 Users: {onlineUsers}
+        </span>
+
+        <span>
+          📝 Words: {wordCount}
+        </span>
+
+        <span>
+          🔤 Characters: {charCount}
+        </span>
+
+        <span>
+          📄 Lines: {lineCount}
+        </span>
+
+        <span>
+          📍 Cursor: {cursorPosition}
+        </span>
+
+        <span>
+          💾 Last Saved:{" "}
+          {lastSaved || "Not Saved"}
+        </span>
       </div>
 
-      {/* Formatting Toolbar */}
+      {/* =========================
+          FORMATTING TOOLBAR
+      ========================= */}
 
       <div
         style={{
@@ -288,7 +418,12 @@ function Editor() {
         }}
       >
         <button
-          onClick={() => wrapSelection("**")}
+          onMouseDown={(e) =>
+            e.preventDefault()
+          }
+          onClick={() =>
+            formatText("bold")
+          }
           style={{
             padding: "8px 18px",
             background: "#2563eb",
@@ -296,14 +431,18 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            transition: "0.3s",
           }}
         >
           <b>B</b>
         </button>
 
         <button
-          onClick={() => wrapSelection("*")}
+          onMouseDown={(e) =>
+            e.preventDefault()
+          }
+          onClick={() =>
+            formatText("italic")
+          }
           style={{
             padding: "8px 18px",
             background: "#16a34a",
@@ -311,14 +450,18 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            transition: "0.3s",
           }}
         >
           <i>I</i>
         </button>
 
         <button
-          onClick={() => wrapSelection("__")}
+          onMouseDown={(e) =>
+            e.preventDefault()
+          }
+          onClick={() =>
+            formatText("underline")
+          }
           style={{
             padding: "8px 18px",
             background: "#9333ea",
@@ -326,7 +469,6 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            transition: "0.3s",
           }}
         >
           <u>U</u>
@@ -341,30 +483,43 @@ function Editor() {
             border: "none",
             borderRadius: "6px",
             cursor: "pointer",
-            transition: "0.3s",
           }}
         >
           Clear
         </button>
       </div>
 
-      <textarea
-        ref={textareaRef}
-        rows={20}
-        cols={80}
-        placeholder="Start typing..."
+      {/* =========================
+          RICH TEXT EDITOR
+      ========================= */}
+
+      <div
+        ref={editorRef}
+        contentEditable={true}
+        suppressContentEditableWarning={true}
+        data-placeholder="Start typing..."
+        onInput={updateStats}
         style={{
           width: "90%",
           maxWidth: "900px",
           minHeight: "350px",
-          resize: "vertical",
-          fontSize: "16px",
           padding: "15px",
           borderRadius: "10px",
           border: "1px solid #ccc",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          background: "white",
+          boxShadow:
+            "0 2px 8px rgba(0,0,0,0.1)",
+          fontSize: "16px",
+          lineHeight: "1.6",
+          outline: "none",
+          overflowY: "auto",
+          boxSizing: "border-box",
         }}
       />
+
+      {/* =========================
+          ACTION BUTTONS
+      ========================= */}
 
       <div
         style={{
@@ -375,7 +530,7 @@ function Editor() {
           justifyContent: "center",
         }}
       >
-      <button
+        <button
           onClick={saveDocument}
           style={{
             padding: "10px 20px",
@@ -384,7 +539,6 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
-            transition: "0.3s",
           }}
         >
           💾 Save Document
@@ -399,7 +553,6 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
-            transition: "0.3s",
           }}
         >
           📄 Export PDF
@@ -414,7 +567,6 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
-            transition: "0.3s",
           }}
         >
           🌐 Export HTML
@@ -429,12 +581,15 @@ function Editor() {
             color: "white",
             border: "none",
             borderRadius: "5px",
-            transition: "0.3s",
           }}
         >
           👁 Preview
         </button>
       </div>
+
+      {/* =========================
+          PREVIEW
+      ========================= */}
 
       {previewHTML && (
         <div
@@ -445,7 +600,9 @@ function Editor() {
             padding: "20px",
             borderRadius: "10px",
             background: "white",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            boxShadow:
+              "0 2px 8px rgba(0,0,0,0.1)",
+            boxSizing: "border-box",
           }}
         >
           <h3>Document Preview</h3>
